@@ -8,7 +8,18 @@ the last. Predators arrive on a timer and take the valley from a chore into a ri
 
 Everything is one scene (`Assets/Scenes/Map.unity`), one player, no netcode.
 
-<!-- SCREENSHOTS -->
+![The valley from above — camp at the bottom, six zones radiating out](Screenshots/01-valley.png)
+
+| | |
+|---|---|
+| ![Base camp](Screenshots/02-camp.png) | ![Meadow, tier-1 wood](Screenshots/03-meadow.png) |
+| **Base camp** — market stall, upgrade pads, the menhir | **Meadow (Lv1 axe)** — where every run starts |
+| ![Quarry](Screenshots/04-quarry.png) | ![Deep forest](Screenshots/05-deepforest.png) |
+| **Quarry (Lv1 pickaxe)** — the stone lane | **Deep forest (Lv15 axe)** — 170 nodes, the endgame zone |
+
+<sub>Shots are rendered from edit mode at the game's own camera rig (8 up, 6 back, 50° pitch)
+by <a href="Assets/Editor/ScreenshotTool.cs">ScreenshotTool.cs</a>, so they re-generate from a menu item after any world change.
+The player is out of frame in all of them — edit mode runs no Animator, so the rig would render T-posed.</sub>
 
 > **This is the source-code repository.** It contains the C# runtime code, the editor
 > tooling that generates the world, the test suite and the design docs — about 4 000
@@ -596,6 +607,7 @@ Menu items under **Tools/Survival**:
 | [`MarketSetup.cs`](Assets/Editor/MarketSetup.cs) | — | The market stall and merchant. |
 | [`ParticleSetup.cs`](Assets/Editor/ParticleSetup.cs) | — | Generates the debris/spark/campfire particle prefabs. |
 | [`NavMeshSetup.cs`](Assets/Editor/NavMeshSetup.cs) | Bake NavMesh | Bakes the surface `Creature` routes on. |
+| [`ScreenshotTool.cs`](Assets/Editor/ScreenshotTool.cs) | Capture Screenshots | Renders the README shots from edit mode at the game's camera rig. Writes to `Screenshots/`. |
 | [`RunAllTests.cs`](Assets/Tests/EditMode/RunAllTests.cs) | Run EditMode Tests | Runs the suite and prints one `[TESTS]` summary. |
 
 **Re-bake the NavMesh after any change to terrain or static layout.** The bake collects
