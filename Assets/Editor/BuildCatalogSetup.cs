@@ -93,6 +93,51 @@ public static class BuildCatalogSetup
     // so the fill level is readable at a glance.
     static void Flat(Image img) { if (img != null) { img.sprite = RectSprite; img.type = Image.Type.Simple; } }
 
+    // Vertical gradient: clear at the top, near-black at the bottom.
+    //
+    // The title screen needs the valley visible up top AND legible buttons down low,
+    // and one flat scrim cannot do both — crank it dark enough to read the buttons and
+    // the whole view turns to grey mud. Generated 4px wide (the gradient is vertical,
+    // so width is irrelevant) and tall enough that bilinear filtering keeps it smooth.
+    const string FadeSpritePath = "Assets/UI/BottomFade.png";
+    static Sprite _fade;
+    static Sprite FadeSprite()
+    {
+        if (_fade != null) return _fade;
+        _fade = AssetDatabase.LoadAssetAtPath<Sprite>(FadeSpritePath);
+        if (_fade != null) return _fade;
+
+        if (!AssetDatabase.IsValidFolder("Assets/UI")) AssetDatabase.CreateFolder("Assets", "UI");
+        const int W = 4, H = 256;
+        var tex = new Texture2D(W, H, TextureFormat.RGBA32, false);
+        var px = new Color32[W * H];
+        for (int y = 0; y < H; y++)
+        {
+            // y=0 is the BOTTOM row in Unity texture space. Squared falloff so the fade
+            // hugs the bottom instead of greying out the middle of the screen.
+            float t = 1f - (y / (float)(H - 1));
+            byte a = (byte)Mathf.RoundToInt(Mathf.Clamp01(t * t) * 235f);
+            for (int x = 0; x < W; x++) px[y * W + x] = new Color32(10, 8, 7, a);
+        }
+        tex.SetPixels32(px);
+        tex.Apply();
+        System.IO.File.WriteAllBytes(FadeSpritePath, tex.EncodeToPNG());
+        Object.DestroyImmediate(tex);
+
+        AssetDatabase.ImportAsset(FadeSpritePath, ImportAssetOptions.ForceUpdate);
+        var imp = (TextureImporter)AssetImporter.GetAtPath(FadeSpritePath);
+        imp.textureType = TextureImporterType.Sprite;
+        imp.spriteImportMode = SpriteImportMode.Single;
+        imp.mipmapEnabled = false;
+        imp.wrapMode = TextureWrapMode.Clamp;
+        imp.alphaIsTransparency = true;
+        imp.textureCompression = TextureImporterCompression.Uncompressed;
+        imp.SaveAndReimport();
+
+        _fade = AssetDatabase.LoadAssetAtPath<Sprite>(FadeSpritePath);
+        return _fade;
+    }
+
     [MenuItem("Tools/Survival/Build Catalog + UI")]
     public static void Build()
     {
@@ -121,13 +166,15 @@ public static class BuildCatalogSetup
     // full-screen overlay to the end, last one wins.
     static void RaiseOverlays()
     {
-        var root = SafeRoot();
+        // Modals live on the CANVAS ROOT, not under SafeAreaRoot, so their scrims reach
+        // the physical screen edges (see BleedRoot). Order matters — uGUI draws by
+        // sibling index and the last one wins. Raising them here puts every modal above
+        // SafeAreaRoot, and therefore above the HUD and the BUILD button, which would
+        // otherwise render through the scrim and stay tappable.
+        // TitlePanel is last of all: it covers every other modal too.
+        var root = BleedRoot();
         if (root == null) return;
-        // Order matters — uGUI draws by sibling index, so the last one wins. TitlePanel
-        // is last of all: it is the only screen that must cover the HUD and the BUILD
-        // button, which are siblings created later in the rebuild and would otherwise
-        // render on top of it and stay tappable through the scrim.
-        foreach (string n in new[] { "BuildMenu", "PausePanel", "VictoryPanel", "IntroPanel", "TitlePanel" })
+        foreach (string n in new[] { "ShopPanel", "BuildMenu", "PausePanel", "VictoryPanel", "IntroPanel", "TitlePanel" })
         {
             var t = FindDeep(root, n);
             if (t != null) t.SetAsLastSibling();
@@ -402,12 +449,29 @@ public static class BuildCatalogSetup
 
     // --------------------------------------------------------------- UI helpers
 
+    // Everything that must clear a notch: the HUD, the toggles, the objective banner.
     static Transform SafeRoot()
     {
         var canvas = GameObject.Find("Canvas");
         if (canvas == null) return null;
         var sar = FindDeep(canvas.transform, "SafeAreaRoot");
         return sar != null ? sar : canvas.transform;
+    }
+
+    // Full-bleed root, for modal scrims ONLY.
+    //
+    // SafeArea insets SafeAreaRoot to Screen.safeArea, so a "full-screen" scrim
+    // parented there stops at the notch and leaves a bright strip of live game across
+    // the top of every modal. Invisible in the editor, where Screen.safeArea is the
+    // whole screen — it only shows up on a real handset (reported 2026-07-24 against
+    // the title screen and the WELCOME card).
+    //
+    // The scrim goes here so it reaches the physical edges; the CARD inside it stays
+    // centred, which keeps it clear of the cutout without needing the inset.
+    static Transform BleedRoot()
+    {
+        var canvas = GameObject.Find("Canvas");
+        return canvas != null ? canvas.transform : null;
     }
 
     static Transform FindDeep(Transform root, string name)
@@ -466,7 +530,8 @@ public static class BuildCatalogSetup
         if (root == null) { Debug.LogWarning("[BuildCatalogSetup] no Canvas."); return; }
         var bs = Object.FindFirstObjectByType<BuildSystem>();
 
-        Kill(root, "BuildMenu");
+        var bleed = BleedRoot();
+        Kill(bleed, "BuildMenu");
 
         // Centred modal. The old 900x520 was sized back when the game still shipped
         // landscape through a portrait-referenced scaler; the game is portrait now
@@ -474,7 +539,7 @@ public static class BuildCatalogSetup
         // catalog in the middle of a 1920-tall screen. Matched to the shop sheet's
         // footprint so the two read as one system.
         const float MenuW = 1000f, MenuH = 1150f, HeadH = 96f, ToolH = 110f;
-        var menu = Overlay("BuildMenu", root, out var card, MenuW, MenuH);
+        var menu = Overlay("BuildMenu", bleed, out var card, MenuW, MenuH);
         card.anchoredPosition = new Vector2(0f, 40f);   // clear of the joystick thumb zone
 
         // header strip
@@ -629,7 +694,8 @@ public static class BuildCatalogSetup
         var shop = Object.FindFirstObjectByType<Shop>();
         if (shop == null) { Debug.LogWarning("[BuildCatalogSetup] no Shop in scene — panel skipped."); return; }
 
-        Kill(root, "ShopPanel");
+        var bleed = BleedRoot();
+        Kill(bleed, "ShopPanel");
 
         // Card geometry, in the 1080x1920 portrait design space. Sized off the user's
         // marked-up screenshot: the sheet should fill from roughly a fifth down the
@@ -855,10 +921,11 @@ public static class BuildCatalogSetup
 
         Kill(root, "ResetBtn");        // the old corner slab
         Kill(root, "MenuToggle");
-        Kill(root, "PausePanel");
-        Kill(root, "VictoryPanel");
-        Kill(root, "IntroPanel");
-        Kill(root, "TitlePanel");
+        var bleed = BleedRoot();
+        Kill(bleed, "PausePanel");
+        Kill(bleed, "VictoryPanel");
+        Kill(bleed, "IntroPanel");
+        Kill(bleed, "TitlePanel");
 
         var gm = GameObject.Find("GameManager");
 
@@ -872,8 +939,9 @@ public static class BuildCatalogSetup
         // menu. This is built as a settings sheet instead: titled header with a
         // close X, a labelled row carrying its control on the right, and the one
         // destructive action fenced off in its own footer under a rule.
-        const float PW = 620f, PH = 400f, Pad = 28f, RowH = 96f, BtnH = 84f;
-        var pause = Overlay("PausePanel", root, out var pauseCard, PW, PH);
+        // PH grew from 400 to fit the device readout in the footer.
+        const float PW = 620f, PH = 472f, Pad = 28f, RowH = 96f, BtnH = 84f;
+        var pause = Overlay("PausePanel", bleed, out var pauseCard, PW, PH);
 
         // header strip
         var head = Rect("Header", pauseCard, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
@@ -928,6 +996,15 @@ public static class BuildCatalogSetup
         var rb = reset.gameObject.AddComponent<ResetButton>();
         rb.label = reset.GetComponentInChildren<TextMeshProUGUI>();
 
+        // Device readout. Notch bugs cannot be reproduced in the editor — Screen.safeArea
+        // is the whole screen there — so this is the only way to find out what a phone
+        // that clips the HUD is actually reporting. Doubles as the version stamp.
+        var devInfo = Label("DeviceInfo", pauseCard, "", 19f, TextAlignmentOptions.Center, InkDim,
+                            new Vector2(0f, 1f), new Vector2(1f, 1f),
+                            new Vector2(Pad, -(PH - Pad)), new Vector2(-Pad, -(PH - Pad - 56f)));
+        devInfo.textWrappingMode = TMPro.TextWrappingModes.Normal;
+        devInfo.lineSpacing = -12f;
+
         // --- the win screen ---
         // Now the door to prestige, so it grew from one button to three: master the
         // valley, then hand it back for a permanent cut on every sale — keeping the
@@ -936,7 +1013,7 @@ public static class BuildCatalogSetup
         const float WinW = 700f, WinBtnH = 92f, WinGap = 14f;
         const float WinBtnTop = 300f;   // first button's top edge, below the body copy
         const float WinH = WinBtnTop + WinBtnH * 3f + WinGap * 2f + Pad;
-        var victory = Overlay("VictoryPanel", root, out var winCard, WinW, WinH);
+        var victory = Overlay("VictoryPanel", bleed, out var winCard, WinW, WinH);
 
         Label("Title", winCard, "VALLEY MASTERED", 46f, TextAlignmentOptions.Center, Accent,
               new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -104f), new Vector2(0f, -36f));
@@ -981,19 +1058,37 @@ public static class BuildCatalogSetup
         // a 1179-wide phone that lands at ~44px, which is roughly the 16sp Android body
         // default — 27pt landed at ~29px, well under it, which is why it read as small.
         // Row height has to lead the font: the two longest lines wrap to 3 at this size.
-        const float IW = 960f, IntroRowH = 168f, ChipD = 88f;
+        // IntroRowH holds the 50px lead band plus the detail. MEASURED, not guessed:
+        // the longest detail wraps to two lines and reports preferredHeight 77, so
+        // 50 + 6 + 77 + 4 = 137 is the real requirement and 160 leaves slack for a
+        // font-metric change. 186 reserved room for three lines nothing actually uses
+        // and left the rows looking ragged with dead space between them.
+        //
+        // Wrapping is device-independent — the scaler matches on WIDTH, so the design
+        // space is 1080 wide on every phone and these line counts cannot shift.
+        // If a detail line ever grows to three lines this must go back up; the render
+        // check asserts preferredHeight against the band and will catch it.
+        const float IW = 960f, IntroRowH = 160f, ChipD = 88f;
         const int Rows = 6;
         const float IntroTop = 158f;                       // below the title
         const float IntroBtnH = 104f;                      // fatter than the settings BtnH — it is the only tap target here
         const float IH = IntroTop + IntroRowH * Rows + 24f + IntroBtnH + Pad;   // 1322
-        var intro = Overlay("IntroPanel", root, out var introCard, IW, IH);
+        var intro = Overlay("IntroPanel", bleed, out var introCard, IW, IH);
         Label("Title", introCard, "WELCOME", 64f, TextAlignmentOptions.Center, Accent,
               new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -130f), new Vector2(0f, -42f))
             .fontStyle = FontStyles.Bold;
 
-        // One row: tinted circular chip on the left, text on the right. `glyph` draws
-        // into the chip when there is no sprite for the idea.
-        void IntroRow(int slot, string iconAsset, Color tint, string text, System.Action<Transform, Color> glyph)
+        // One row: tinted circular chip on the left, then a BOLD one-word lead over a
+        // quieter detail line. `glyph` draws into the chip when there is no sprite.
+        //
+        // The first pass gave every row a single 40pt sentence, so six rows read as one
+        // undifferentiated block of prose — exactly the thing a first-time player skips.
+        // Two tiers means the six leads (MOVE / GATHER / SELL / BUILD / CAMPFIRE /
+        // FIGHT) can be skimmed in a second, and the detail is there for whoever wants
+        // it. No information was cut; the facing cone, the 3-campfire cap and the
+        // predator timer all still have to be on this card, because it shows ONCE.
+        void IntroRow(int slot, string iconAsset, Color tint, string lead, string detail,
+                      System.Action<Transform, Color> glyph)
         {
             float y = -IntroTop - slot * IntroRowH;
             var row = Rect($"Row{slot}", introCard, new Vector2(0f, 1f), new Vector2(0f, 1f),
@@ -1027,20 +1122,31 @@ public static class BuildCatalogSetup
                 if (sprite != null) img.sprite = sprite; else img.color = tint;
             }
 
-            Label("Text", row, text, 40f, TextAlignmentOptions.Left, Ink,
-                  new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(ChipD + 26f, 6f), new Vector2(-6f, -6f))
+            // Text column clears the chip. BAND HEIGHTS LEAD THE FONT — TMP's Ellipsis
+            // overflow culls a line that does not fit vertically and renders NOTHING,
+            // silently (this bit the title screen wordmark).
+            const float LeadH = 50f;
+            var leadLabel = Label("Lead", row, lead, 34f, TextAlignmentOptions.Left, tint,
+                                  new Vector2(0f, 1f), new Vector2(1f, 1f),
+                                  new Vector2(ChipD + 26f, -LeadH - 2f), new Vector2(-6f, -2f));
+            leadLabel.fontStyle = FontStyles.Bold;
+            leadLabel.characterSpacing = 6f;   // the leads are short caps; tracking helps them read as labels
+
+            Label("Detail", row, detail, 34f, TextAlignmentOptions.TopLeft, Ink,
+                  new Vector2(0f, 0f), new Vector2(1f, 1f),
+                  new Vector2(ChipD + 26f, 4f), new Vector2(-6f, -(LeadH + 6f)))
                 .textWrappingMode = TMPro.TextWrappingModes.Normal;
         }
 
-        IntroRow(0, "icon_speed", TintSpeed, "Drag anywhere to move.", null);
-        // Rows 1 and 5 both say "face it" on purpose: targeting is a facing cone now
+        IntroRow(0, "icon_speed", TintSpeed, "MOVE", "Drag anywhere on the screen.", null);
+        // Rows 1 and 5 both lead on "face it" on purpose: targeting is a facing cone
         // (FacingCheck), and a player who doesn't know that reads the dead swing as a
         // broken game rather than as aiming.
-        IntroRow(1, "icon_wood", TintWood, "Face a tree or rock, stand still, and you gather it.", null);
-        IntroRow(2, null, TintCoin, "Visit the market to sell your haul and buy better tools.", CoinGlyph);
-        IntroRow(3, null, Accent, "Tap BUILD, bottom right, to place fences, walls and campfires.", BuildGlyph);
-        IntroRow(4, null, TintFire, "A campfire heals you, scares animals off, and is where you respawn. Three at most.", FlameGlyph);
-        IntroRow(5, null, TintWeapon, "Face an animal and stand still to swing. Predators arrive in a few minutes — build before they do.", SpearGlyph);
+        IntroRow(1, "icon_wood", TintWood, "GATHER", "Face a tree or rock and stand still.", null);
+        IntroRow(2, null, TintCoin, "SELL", "Take your haul to the market for coins and better tools.", CoinGlyph);
+        IntroRow(3, null, Accent, "BUILD", "Tap BUILD, bottom right: fences, walls, campfires.", BuildGlyph);
+        IntroRow(4, null, TintFire, "CAMPFIRE", "Heals you, scares animals off, and is where you respawn. Three at most.", FlameGlyph);
+        IntroRow(5, null, TintWeapon, "FIGHT", "Face an animal and stand still to swing. Predators arrive in minutes — build first.", SpearGlyph);
 
         var gotit = MenuButton(introCard, "GotItBtn", "GOT IT", Accent,
                                -(IH - Pad - IntroBtnH), IW - Pad * 2f, IntroBtnH, 44f);
@@ -1058,26 +1164,49 @@ public static class BuildCatalogSetup
         // bottom of the frame; the first pass did exactly that and left the lower
         // third empty. Anchored at the centre, the slack splits evenly instead.
         const float TitleBtnW = 620f, PlayH = 132f, NewH = 96f;
-        const float ContentH = 760f;
-        var title = Rect("TitlePanel", root, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+        const float LogoD = 300f;        // the conifer mark, above the wordmark
+        const float ContentH = 880f;
+        var title = Rect("TitlePanel", bleed, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
                          Vector2.zero, Vector2.zero);
         Stretch(title);
-        // Near-opaque, unlike the 0.66 modal scrim: the valley should read as a
-        // backdrop, not as a game already running that the player is missing.
-        Panel_(title, new Color(0.06f, 0.05f, 0.04f, 0.9f));
+        // Two layers, not one. A single flat scrim over a 3D scene reads as a grey
+        // sheet; this is a lighter overall wash plus a vertical gradient that sinks the
+        // bottom of the screen to near-black, so the buttons sit on darkness and the
+        // valley stays visible up top. Cheap: two stretched Images, no shader.
+        Panel_(title, new Color(0.05f, 0.045f, 0.04f, 0.8f));
+        var vignette = Rect("Vignette", title, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                            Vector2.zero, Vector2.zero);
+        Stretch(vignette);
+        var vig = Panel_(vignette, Color.white);
+        vig.sprite = FadeSprite();
+        vig.type = Image.Type.Simple;
+        vig.raycastTarget = false;
 
         var content = Rect("Content", title, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
                            Vector2.zero, new Vector2(1080f, ContentH));
 
         // Offsets below are measured down from the container's own top edge.
-        Label("Title", content, "TIMBERLINE", 118f, TextAlignmentOptions.Center, Accent,
-              new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -200f), new Vector2(0f, 0f));
-        Label("Tagline", content, "Chop. Sell. Upgrade. Survive.", 36f, TextAlignmentOptions.Center, InkDim,
-              new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -282f), new Vector2(0f, -218f));
+        var logoRT = Rect("Logo", content, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                          new Vector2(0f, 0f), new Vector2(LogoD, LogoD));
+        var logoImg = logoRT.gameObject.AddComponent<Image>();
+        logoImg.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/UI/Branding/mark-1024-transparent.png");
+        logoImg.preserveAspect = true;
+        logoImg.raycastTarget = false;
+        if (logoImg.sprite == null)
+            Debug.LogWarning("[BuildCatalogSetup] branding mark missing — run dev/make_logo.py, then reimport it as a Sprite.");
 
-        var playRT = MenuButton(content, "PlayBtn", "PLAY", Accent, -460f, TitleBtnW, PlayH, 52f);
+        // BAND HEIGHT MUST LEAD THE FONT. TMP's Ellipsis overflow culls a line that does
+        // not fit VERTICALLY — it renders nothing at all, silently. A 118pt line needs
+        // ~138px; a 130px band made the whole wordmark vanish while the object still
+        // reported enabled=true with the right text. Keep ~1.5x the point size here.
+        Label("Title", content, "TIMBERLINE", 118f, TextAlignmentOptions.Center, Accent,
+              new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -465f), new Vector2(0f, -285f));
+        Label("Tagline", content, "Chop. Sell. Upgrade. Survive.", 36f, TextAlignmentOptions.Center, InkDim,
+              new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -545f), new Vector2(0f, -480f));
+
+        var playRT = MenuButton(content, "PlayBtn", "PLAY", Accent, -616f, TitleBtnW, PlayH, 52f);
         var newRT = MenuButton(content, "NewGameBtn", "New Game", new Color(0.42f, 0.19f, 0.17f, 1f),
-                               -460f - PlayH - 20f, TitleBtnW, NewH, 34f);
+                               -616f - PlayH - 20f, TitleBtnW, NewH, 34f);
         var newLabel = newRT.GetComponentInChildren<TextMeshProUGUI>();
         newLabel.color = new Color(0.95f, 0.55f, 0.50f);
         // Same guarded two-tap wipe the settings sheet uses — it wires its own onClick
@@ -1101,6 +1230,14 @@ public static class BuildCatalogSetup
             UnityEventTools.AddPersistentListener(toggleBtn.onClick, new UnityEngine.Events.UnityAction(pm.Toggle));
             UnityEventTools.AddPersistentListener(closeBtn.onClick, new UnityEngine.Events.UnityAction(pm.Resume));
             UnityEventTools.AddPersistentListener(soundBtn.onClick, new UnityEngine.Events.UnityAction(pm.ToggleMute));
+
+            // Lives on the PANEL, not the GameManager: OnEnable then fires every time
+            // the sheet is opened, so the numbers are current rather than whatever they
+            // were at boot (cutouts can arrive a frame or two late, and rotate).
+            var dev = pause.gameObject.GetComponent<DeviceInfoLabel>();
+            if (dev == null) dev = pause.gameObject.AddComponent<DeviceInfoLabel>();
+            dev.label = devInfo;
+            dev.safeArea = Object.FindFirstObjectByType<SafeArea>();
 
             var vp = gm.GetComponent<VictoryPanel>();
             if (vp == null) vp = gm.AddComponent<VictoryPanel>();

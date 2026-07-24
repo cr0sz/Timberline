@@ -85,8 +85,21 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    // Cleared by TitleScreen, which parks the camera on a scenic view of the valley
+    // while the title is up. Without this the follow drags the rig back to the player
+    // every frame and the title shows whatever patch of ground he happens to stand on.
+    [HideInInspector] public bool cameraFollowEnabled = true;
+
+    /// <summary>Drop the rig onto the player with no smoothing — used when handing the camera back.</summary>
+    public void SnapCameraToPlayer()
+    {
+        camVel = Vector3.zero;
+        if (cameraFollowTarget != null) cameraFollowTarget.position = transform.position;
+    }
+
     void LateUpdate()
     {
+        if (!cameraFollowEnabled) return;
         // Smooth the follow instead of hard-locking — reads much better on phone.
         cameraFollowTarget.position = cameraSmoothTime > 0f
             ? Vector3.SmoothDamp(cameraFollowTarget.position, transform.position, ref camVel, cameraSmoothTime)
