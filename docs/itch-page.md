@@ -1,0 +1,100 @@
+# itch.io page copy
+
+Paste-ready text for the itch.io project page. Everything here is drafted from the
+actual balance numbers in the README — if you retune the game, retune this too.
+
+---
+
+## Title
+
+**Survival**
+
+## Short description (the one-liner under the title, ~140 chars)
+
+> A low-poly survival tycoon for Android. Chop, mine, hunt, sell, upgrade — and get
+> your camp standing before the predators show up.
+
+## Classification / metadata
+
+| Field | Value |
+|---|---|
+| Kind of project | Game |
+| Release status | Prototype / In development |
+| Platform | Android (`.apk`) |
+| Pricing | Free / "No payments" |
+| Genre | Adventure (closest fit; there is no Tycoon genre) |
+| Tags | `survival`, `tycoon`, `low-poly`, `unity`, `mobile`, `android`, `idle`, `crafting`, `singleplayer`, `3d` |
+| Inputs | Touchscreen (also keyboard in the editor) |
+| Average session | About a half-hour |
+| Languages | English |
+
+## Long description
+
+> ### The valley pays better the further out you go
+>
+> You start next to a market stall with a tier-1 axe and an empty bag. You chop, you
+> mine, you hunt, you sell, and every upgrade unlocks ground that pays better than the
+> last. A meadow oak is worth three coins a second. The deep forest at the far end of
+> the valley is worth two hundred.
+>
+> ### Three things keep the loop honest
+>
+> **Zones are gated on tool tier, not on distance.** A level-15 poplar refuses a
+> level-14 axe outright. You cannot outrun the curve by walking further; you have to
+> earn the tool.
+>
+> **A node is worth a fixed total.** A better axe fells a tree in fewer swings, never
+> for fewer logs. Upgrades buy you time, not multipliers.
+>
+> **The bag is the throttle.** It starts at 25 and caps at 300, so the walk back to the
+> market is always part of the price of a haul — and dying on the way costs you 30% of
+> what you are carrying.
+>
+> ### And then the predators arrive
+>
+> Wolves at six minutes. A tiger at ten. A bear at fifteen. Each one is winnable at the
+> weapon tier you should have by then, and each one is expensive — a bear costs about
+> 72 of your 100 health even when you win. That grace period is the real clock: it is
+> how long you have to get a camp up.
+>
+> Build fences, walls, a gate, a watchtower and up to three campfires. Walls block
+> animals and the animals path *around* them rather than pressing into them. A campfire
+> heals you, scares predators off, and is where you respawn.
+>
+> ### Also in there
+>
+> - 674 resource nodes across six zones, all of it generated from code
+> - A 30-goal objective chain that spans the whole curve, ending in a win screen
+> - Tools, weapon, bag and move speed, all upgradable to a cap
+> - Full save/load — coins, inventory, every tier, every structure you placed
+> - Portrait, one-thumb, floating joystick, notch-safe
+
+## Install instructions
+
+> Download the `.apk` and open it on an Android device (Android 7.1 / API 25 or newer,
+> 64-bit ARM).
+>
+> The build is debug-signed rather than Play Store signed, so Android will warn you
+> about installing from an unknown source and you will have to allow it for your
+> browser or file manager. That is expected for a sideloaded build.
+
+## Capsule / cover art
+
+itch.io wants **630×500** for the cover. None of the rendered screenshots are that
+aspect, so crop rather than squash:
+
+- Best source is `Screenshots/01-valley.png` (1920×1080) — crop to the centre-left where
+  the camp, the menhir and the road junction sit, then scale to 630×500.
+- Overlay the word **SURVIVAL** in the game's amber (`#E8A34A`) if you want it to read
+  as a title card rather than a screenshot.
+
+Screenshots to upload, in this order: `01-valley`, `05-deepforest`, `02-camp`,
+`04-quarry`, `03-meadow`, `06-orefield`.
+
+## Still missing before this is a good page
+
+- **A gameplay GIF or a 30-second video.** This is the single biggest gap — the store
+  page has no motion in it. Record it on a real device; the editor renders here are all
+  static edit-mode captures with no animation.
+- A screenshot with the HUD and the build ghost visible. Every shot in the repo is
+  scenery only, because edit mode runs no Animator and no runtime UI state.

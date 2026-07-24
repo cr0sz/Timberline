@@ -51,7 +51,9 @@ public class PauseMenu : MonoBehaviour
     void Update()
     {
         // Escape is also the Android BACK button, which previously did nothing.
-        if (Input.GetKeyDown(KeyCode.Escape)) Toggle();
+        // Ignored while the title screen is up: Resume() would drop timeScale back to
+        // 1 and run the world behind a screen the player hasn't dismissed yet.
+        if (Input.GetKeyDown(KeyCode.Escape) && !TitleScreen.Showing) Toggle();
     }
 
     public void Toggle()

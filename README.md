@@ -78,8 +78,10 @@ joystick does.
 Build target is Android. `MobileBootstrap` uncaps the framerate to 60 and forces the
 `Mobile` quality level on real handhelds.
 
-There is no launcher scene and no main menu — the game *is* the map. Pause, sound and
-"New Game" live in the in-game pause panel.
+There is no launcher scene: the title screen is a panel over the already-loaded map with
+`timeScale` pinned to 0, not a second scene. It reads "PLAY" on a fresh install and
+"CONTINUE" once a save exists, and the "New Game" button under it only appears when
+there is something to wipe. Pause and sound live in the in-game settings sheet.
 
 ---
 
@@ -478,6 +480,7 @@ a setting, not progress.
 | [`BackCarryVisual.cs`](Assets/Scripts/BackCarryVisual.cs) | Your haul as a bundle on your back; scales down past a max height so a full bag always reads as "packed". |
 | [`HeldToolSwap.cs`](Assets/Scripts/HeldToolSwap.cs) | One thing in hand at a time — axe while gathering, weapon while a creature is near, empty otherwise. Combat wins ties. |
 | [`PanelPop.cs`](Assets/Scripts/PanelPop.cs) / [`UIFeedback.cs`](Assets/Scripts/UIFeedback.cs) | Panel scale-in, and button punch + card colour flash on buy/reject. Both run on **unscaled** time so they animate at `timeScale 0`. |
+| [`TitleScreen.cs`](Assets/Scripts/TitleScreen.cs) | The front door, as a panel rather than a scene. Pins `timeScale` to 0, hides the HUD/BUILD/settings chrome outright (a 0.9 scrim only dims them to ~30% in linear colour), and defers the first-run how-to-play card until PLAY so two modals never stack. |
 | [`PauseMenu.cs`](Assets/Scripts/PauseMenu.cs) | Freezes via `timeScale`. Mute drives `AudioListener.volume`, not the manager's master, so the author's mix trims survive. |
 | [`ResetButton.cs`](Assets/Scripts/ResetButton.cs) | Two-tap guarded wipe, so a stray touch can't delete a run. |
 | [`AudioManager.cs`](Assets/Scripts/AudioManager.cs) | One `AudioSource`, static entry points, `PlayOneShot` so overlapping clips need no pool. |

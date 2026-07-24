@@ -11,7 +11,16 @@ public class IntroTutorial : MonoBehaviour
     // intro, or a wiped player is dropped into a fresh world with no explanation.
     public const string SeenKey = "SeenIntro";
 
+    // Set by TitleScreen in Awake. Two modals stacked on boot read as a bug, so when
+    // a title screen exists it owns the timing and calls ShowIfUnseen() on PLAY.
+    [HideInInspector] public bool deferred;
+
     void Start()
+    {
+        if (!deferred) ShowIfUnseen();
+    }
+
+    public void ShowIfUnseen()
     {
         bool seen = PlayerPrefs.GetInt(SeenKey, 0) == 1;
         if (panel != null) panel.SetActive(!seen);

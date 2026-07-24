@@ -123,7 +123,11 @@ public static class BuildCatalogSetup
     {
         var root = SafeRoot();
         if (root == null) return;
-        foreach (string n in new[] { "BuildMenu", "PausePanel", "VictoryPanel", "IntroPanel" })
+        // Order matters — uGUI draws by sibling index, so the last one wins. TitlePanel
+        // is last of all: it is the only screen that must cover the HUD and the BUILD
+        // button, which are siblings created later in the rebuild and would otherwise
+        // render on top of it and stay tappable through the scrim.
+        foreach (string n in new[] { "BuildMenu", "PausePanel", "VictoryPanel", "IntroPanel", "TitlePanel" })
         {
             var t = FindDeep(root, n);
             if (t != null) t.SetAsLastSibling();
@@ -846,6 +850,7 @@ public static class BuildCatalogSetup
         Kill(root, "PausePanel");
         Kill(root, "VictoryPanel");
         Kill(root, "IntroPanel");
+        Kill(root, "TitlePanel");
 
         var gm = GameObject.Find("GameManager");
 
@@ -1011,6 +1016,45 @@ public static class BuildCatalogSetup
         var gotit = MenuButton(introCard, "GotItBtn", "GOT IT", Accent,
                                -(IH - Pad - IntroBtnH), IW - Pad * 2f, IntroBtnH, 44f);
 
+        // --- title screen ---
+        // Full-bleed, not an Overlay() card: this is the first thing anyone sees, and a
+        // small box floating on the map reads as a popup rather than as a front door.
+        // It is still a panel over the live scene — TitleScreen pins timeScale to 0 —
+        // which buys a title without a second scene, a loader or a second build target.
+        //
+        // Everything hangs off a CENTRED container, not off the top edge. The scaler
+        // matches on width (design 1080), so design-space height is deviceHeight/scale
+        // — 2341 on a 1179x2556 phone, not 1920. Anything measured down from the top
+        // pins to the top and dumps every extra unit of a taller screen into the
+        // bottom of the frame; the first pass did exactly that and left the lower
+        // third empty. Anchored at the centre, the slack splits evenly instead.
+        const float TitleBtnW = 620f, PlayH = 132f, NewH = 96f;
+        const float ContentH = 760f;
+        var title = Rect("TitlePanel", root, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                         Vector2.zero, Vector2.zero);
+        Stretch(title);
+        // Near-opaque, unlike the 0.66 modal scrim: the valley should read as a
+        // backdrop, not as a game already running that the player is missing.
+        Panel_(title, new Color(0.06f, 0.05f, 0.04f, 0.9f));
+
+        var content = Rect("Content", title, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                           Vector2.zero, new Vector2(1080f, ContentH));
+
+        // Offsets below are measured down from the container's own top edge.
+        Label("Title", content, "SURVIVAL", 132f, TextAlignmentOptions.Center, Accent,
+              new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -200f), new Vector2(0f, 0f));
+        Label("Tagline", content, "Chop. Sell. Upgrade. Survive.", 36f, TextAlignmentOptions.Center, InkDim,
+              new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -282f), new Vector2(0f, -218f));
+
+        var playRT = MenuButton(content, "PlayBtn", "PLAY", Accent, -460f, TitleBtnW, PlayH, 52f);
+        var newRT = MenuButton(content, "NewGameBtn", "New Game", new Color(0.42f, 0.19f, 0.17f, 1f),
+                               -460f - PlayH - 20f, TitleBtnW, NewH, 34f);
+        var newLabel = newRT.GetComponentInChildren<TextMeshProUGUI>();
+        newLabel.color = new Color(0.95f, 0.55f, 0.50f);
+        // Same guarded two-tap wipe the settings sheet uses — it wires its own onClick
+        // and drives its own label, so there is nothing to hook up here.
+        newRT.gameObject.AddComponent<ResetButton>().label = newLabel;
+
         // --- components + wiring ---
         if (gm != null)
         {
@@ -1040,6 +1084,25 @@ public static class BuildCatalogSetup
             it.panel = intro.gameObject;
             UnityEventTools.AddPersistentListener(gotit.GetComponent<Button>().onClick, new UnityEngine.Events.UnityAction(it.Dismiss));
 
+            var ts = gm.GetComponent<TitleScreen>();
+            if (ts == null) ts = gm.AddComponent<TitleScreen>();
+            ts.panel = title.gameObject;
+            ts.playLabel = playRT.GetComponentInChildren<TextMeshProUGUI>();
+            ts.newGameBtn = newRT.gameObject;
+            ts.intro = it;                       // the title defers the how-to-play card until PLAY
+            ts.save = Object.FindFirstObjectByType<SaveManager>();
+            // Everything that must not be on screen behind the title. Looked up by
+            // name because these are built by other passes (CompactHud, RebuildToggles,
+            // RebuildObjectiveBanner) that have already run by now.
+            var chrome = new List<GameObject>();
+            foreach (string n in new[] { "HUDPanel", "BuildToggle", "MoveToggle", "MenuToggle", "ObjectiveBanner" })
+            {
+                var t = FindDeep(root, n);
+                if (t != null) chrome.Add(t.gameObject);
+            }
+            ts.hideWhileShown = chrome.ToArray();
+            UnityEventTools.AddPersistentListener(playRT.GetComponent<Button>().onClick, new UnityEngine.Events.UnityAction(ts.Play));
+
             EditorUtility.SetDirty(gm);
         }
         else Debug.LogWarning("[BuildCatalogSetup] no GameManager — pause/victory/intro not wired.");
@@ -1049,6 +1112,7 @@ public static class BuildCatalogSetup
         pause.gameObject.SetActive(false);
         victory.gameObject.SetActive(false);
         intro.gameObject.SetActive(false);
+        title.gameObject.SetActive(false);   // TitleScreen.Start re-enables it on every boot
     }
 
     // --- procedural glyphs -------------------------------------------------

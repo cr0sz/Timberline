@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
@@ -38,12 +39,16 @@ public class ResetButton : MonoBehaviour
         }
         armed = true;
         if (label != null) label.text = armedText;
-        CancelInvoke(nameof(Disarm));
-        Invoke(nameof(Disarm), armWindow);
+        // Realtime, not Invoke: every screen this button lives on (pause sheet, title)
+        // runs at timeScale 0, where Invoke's scaled clock never advances — the button
+        // would stay armed forever and the next stray tap would wipe the save.
+        StopAllCoroutines();
+        StartCoroutine(DisarmAfter(armWindow));
     }
 
-    void Disarm()
+    IEnumerator DisarmAfter(float seconds)
     {
+        yield return new WaitForSecondsRealtime(seconds);
         armed = false;
         if (label != null) label.text = idleText;
     }
