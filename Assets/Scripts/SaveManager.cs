@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -43,7 +44,58 @@ public class SaveManager : MonoBehaviour
         public bool storagePlaced;
     }
 
-    const int CurrentVersion = 6;
+    const int CurrentVersion = 7;
+
+    // Catalog indices are stored raw in buildIndices, so cutting a catalog entry
+    // renumbers everything after it and an old save rebuilds the wrong prefabs.
+    //
+    // v7 cut "Crate" (index 10), which did nothing at all. Campfire moved 11 -> 10.
+    // Placed crates are dropped rather than remapped: the item no longer exists, and
+    // silently turning someone's crates into campfires would hand out free
+    // predator-repel zones (campfires are capped at 3 for exactly that reason).
+    //
+    // Any future cut adds its own block here and bumps CurrentVersion.
+    const int CutCrateIndex = 10;
+
+    /// <summary>
+    /// Pure part of the migration, kept separate so it is testable without a SaveData:
+    /// given the saved indices and the index that was cut, returns one (slot, newIndex)
+    /// pair per SURVIVING entry. `slot` is the position in the original arrays, so the
+    /// caller can carry positions and rotations across in step.
+    /// </summary>
+    public static List<(int slot, int newIndex)> RemapAfterCut(int[] indices, int cutIndex)
+    {
+        var kept = new List<(int, int)>();
+        if (indices == null) return kept;
+        for (int i = 0; i < indices.Length; i++)
+        {
+            int old = indices[i];
+            if (old == cutIndex) continue;                       // the item no longer exists
+            kept.Add((i, old > cutIndex ? old - 1 : old));
+        }
+        return kept;
+    }
+
+    static void MigrateBuildIndices(SaveData d)
+    {
+        if (d.version >= 7 || d.buildIndices == null) return;
+
+        var kept = RemapAfterCut(d.buildIndices, CutCrateIndex);
+        var idx = new List<int>();
+        var pos = new List<Vector3>();
+        var rot = new List<float>();
+        foreach (var (slot, newIndex) in kept)
+        {
+            idx.Add(newIndex);
+            // Written in lockstep by SnapshotBuildables, but a truncated or
+            // hand-edited file must not throw here.
+            if (d.buildPositions != null && slot < d.buildPositions.Length) pos.Add(d.buildPositions[slot]);
+            if (d.buildRotY != null && slot < d.buildRotY.Length) rot.Add(d.buildRotY[slot]);
+        }
+        d.buildIndices = idx.ToArray();
+        d.buildPositions = pos.ToArray();
+        d.buildRotY = rot.ToArray();
+    }
     [Tooltip("Min seconds between throttled autosaves.")]
     public float autosaveInterval = 3f;
 
@@ -167,7 +219,11 @@ public class SaveManager : MonoBehaviour
             bool hasPos = d.version >= 6;
             if (campfire != null) campfire.LoadTier(d.campfireTier, d.campfirePos, hasPos && d.campfirePlaced);
             if (storage != null) storage.LoadTier(d.storageTier, d.storagePos, hasPos && d.storagePlaced);
-            if (builder != null) builder.LoadBuildables(d.buildIndices, d.buildPositions, d.buildRotY);
+            if (builder != null)
+            {
+                MigrateBuildIndices(d);
+                builder.LoadBuildables(d.buildIndices, d.buildPositions, d.buildRotY);
+            }
             if (stats != null && d.version >= 5) stats.LoadStats(d.statWood, d.statStone, d.statTotal, d.statKills);
             if (objectives != null && d.objectiveIndex >= 0) objectives.LoadIndex(d.objectiveIndex);   // reads stats, so load stats first
 

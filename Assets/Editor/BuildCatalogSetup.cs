@@ -160,11 +160,19 @@ public static class BuildCatalogSetup
             new Entry("Deck",       Deck(woodMat),                              35),
             // Torch was cut 2026-07-23: there is no night, so it was bought, placed
             // and lit for nothing. Its "keeps the dark things away" job moved to the
-            // campfire, which now repels predators. NOTE: removing it shifted the
-            // catalog indices of Watchtower (10->9) and Crate (11->10), so a save
-            // written before this change rebuilds those two as the wrong prefab.
+            // campfire, which now repels predators.
+            //
+            // Crate was cut 2026-07-24: it cost 150 coins and did NOTHING — no script,
+            // no capacity, just a mesh with PlacedBuildable so it could be dragged.
+            // Sitting in the menu next to a pad labelled "Storage" it read as a
+            // storage upgrade and was really a decoration, which is a trap, not a
+            // choice. Capacity lives on the StoragePad and the shop's Bag upgrade.
+            // The StorageCrate prefab itself STAYS — the pad still spawns it.
+            //
+            // Each cut shifts every index after it, and indices are baked into saves
+            // (SaveData.buildIndices). SaveManager migrates them on load; bump the
+            // save version and add a mapping there for any future cut.
             new Entry("Watchtower", Watchtower(woodMat),                       220),
-            new Entry("Crate",      Wrap(Load($"{PrefabDir}/StorageCrate.prefab"), "B_Crate"), 150),
             // Campfires are placeable now, CAPPED AT 3 (user call). Each one hands out
             // a predator-free radius, so uncapped fires would let the player pave the
             // valley into one big safe zone and delete the combat game. The pad still
@@ -1041,7 +1049,7 @@ public static class BuildCatalogSetup
                            Vector2.zero, new Vector2(1080f, ContentH));
 
         // Offsets below are measured down from the container's own top edge.
-        Label("Title", content, "SURVIVAL", 132f, TextAlignmentOptions.Center, Accent,
+        Label("Title", content, "TIMBERLINE", 118f, TextAlignmentOptions.Center, Accent,
               new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -200f), new Vector2(0f, 0f));
         Label("Tagline", content, "Chop. Sell. Upgrade. Survive.", 36f, TextAlignmentOptions.Center, InkDim,
               new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -282f), new Vector2(0f, -218f));

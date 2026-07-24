@@ -1,4 +1,4 @@
-# Survival
+<img src="Branding/wordmark-transparent.png" alt="Timberline" height="72">
 
 A mobile (Android) low-poly survival-tycoon built in **Unity 6.3 LTS (6000.3.13f1)** with URP.
 
