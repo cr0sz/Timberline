@@ -1163,9 +1163,13 @@ public static class BuildCatalogSetup
         // pins to the top and dumps every extra unit of a taller screen into the
         // bottom of the frame; the first pass did exactly that and left the lower
         // third empty. Anchored at the centre, the slack splits evenly instead.
-        const float TitleBtnW = 620f, PlayH = 132f, NewH = 96f;
-        const float LogoD = 300f;        // the conifer mark, above the wordmark
-        const float ContentH = 880f;
+        // Scaled up after seeing it on an iPhone 13 Pro: at 620 wide the PLAY button was
+        // 57% of the screen and the lock-up floated small in a lot of empty valley.
+        // A title screen should fill its space — this is the one screen with nothing
+        // competing for room.
+        const float TitleBtnW = 780f, PlayH = 150f, NewH = 106f;
+        const float LogoD = 360f;        // the conifer mark, above the wordmark
+        const float ContentH = 1020f;
         var title = Rect("TitlePanel", bleed, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
                          Vector2.zero, Vector2.zero);
         Stretch(title);
@@ -1199,14 +1203,16 @@ public static class BuildCatalogSetup
         // not fit VERTICALLY — it renders nothing at all, silently. A 118pt line needs
         // ~138px; a 130px band made the whole wordmark vanish while the object still
         // reported enabled=true with the right text. Keep ~1.5x the point size here.
-        Label("Title", content, "TIMBERLINE", 118f, TextAlignmentOptions.Center, Accent,
-              new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -465f), new Vector2(0f, -285f));
-        Label("Tagline", content, "Chop. Sell. Upgrade. Survive.", 36f, TextAlignmentOptions.Center, InkDim,
-              new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -545f), new Vector2(0f, -480f));
+        // Band heights lead the font size — TMP's Ellipsis overflow silently renders
+        // NOTHING when a line does not fit vertically. 132pt needs ~155; the band is 200.
+        Label("Title", content, "TIMBERLINE", 132f, TextAlignmentOptions.Center, Accent,
+              new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -580f), new Vector2(0f, -380f));
+        Label("Tagline", content, "Chop. Sell. Upgrade. Survive.", 40f, TextAlignmentOptions.Center, InkDim,
+              new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -664f), new Vector2(0f, -590f));
 
-        var playRT = MenuButton(content, "PlayBtn", "PLAY", Accent, -616f, TitleBtnW, PlayH, 52f);
+        var playRT = MenuButton(content, "PlayBtn", "PLAY", Accent, -740f, TitleBtnW, PlayH, 60f);
         var newRT = MenuButton(content, "NewGameBtn", "New Game", new Color(0.42f, 0.19f, 0.17f, 1f),
-                               -616f - PlayH - 20f, TitleBtnW, NewH, 34f);
+                               -740f - PlayH - 22f, TitleBtnW, NewH, 38f);
         var newLabel = newRT.GetComponentInChildren<TextMeshProUGUI>();
         newLabel.color = new Color(0.95f, 0.55f, 0.50f);
         // Same guarded two-tap wipe the settings sheet uses — it wires its own onClick
