@@ -1,0 +1,21 @@
+{
+    "name": "Survival.Editor",
+    "rootNamespace": "",
+    "references": [
+        "Survival.Runtime",
+        "Unity.TextMeshPro",
+        "Unity.AI.Navigation",
+        "Unity.AI.Navigation.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
