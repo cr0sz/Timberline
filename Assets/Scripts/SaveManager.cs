@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 // Persists run progress to Application.persistentDataPath/save.json.
 // Runs LAST (DefaultExecutionOrder 1000) so its Load overwrites every other
@@ -42,9 +43,11 @@ public class SaveManager : MonoBehaviour
         public bool campfirePlaced;
         public Vector3 storagePos;
         public bool storagePlaced;
+        // v8: prestige. Survives a New Valley reset — it is the only thing that does.
+        public int valleysMastered;
     }
 
-    const int CurrentVersion = 7;
+    const int CurrentVersion = 8;
 
     // Catalog indices are stored raw in buildIndices, so cutting a catalog entry
     // renumbers everything after it and an old save rebuilds the wrong prefabs.
@@ -130,7 +133,20 @@ public class SaveManager : MonoBehaviour
             else if (s.kind == UpgradeStation.Kind.Storage) storage = s;
         }
         if (inventory != null) inventory.OnInventoryChanged += MarkDirty;
+
+        // Scene defaults, captured BEFORE Load() (which runs in Start) overwrites
+        // them. A New Valley reset needs to write these back, and once a run is
+        // loaded there is no longer anywhere to read "what a fresh player starts
+        // with" from. DefaultExecutionOrder(1000) puts this Awake after everyone
+        // else's, but still before any Start, so the fields are untouched here.
+        if (inventory != null) baseCapacity = inventory.capacity;
+        if (mover != null) baseMoveSpeed = mover.moveSpeed;
+        if (health != null) baseHealth = health.maxHealth;
     }
+
+    int baseCapacity = 50;
+    float baseMoveSpeed = 4f;
+    int baseHealth = 100;
 
     void OnDestroy()
     {
@@ -161,6 +177,7 @@ public class SaveManager : MonoBehaviour
         try
         {
             var d = new SaveData { version = CurrentVersion };
+            d.valleysMastered = Prestige.ValleysMastered;
             if (inventory != null)
             {
                 d.coins = inventory.coins;
@@ -225,6 +242,9 @@ public class SaveManager : MonoBehaviour
                 builder.LoadBuildables(d.buildIndices, d.buildPositions, d.buildRotY);
             }
             if (stats != null && d.version >= 5) stats.LoadStats(d.statWood, d.statStone, d.statTotal, d.statKills);
+            // Before objectives: LoadIndex re-Checks goals, and a Coins goal is
+            // evaluated against coins that the multiplier already influenced.
+            Prestige.Set(d.version >= 8 ? d.valleysMastered : 0);
             if (objectives != null && d.objectiveIndex >= 0) objectives.LoadIndex(d.objectiveIndex);   // reads stats, so load stats first
 
             dirty = false;
@@ -246,10 +266,65 @@ public class SaveManager : MonoBehaviour
     public void DeleteSave()
     {
         try { if (File.Exists(SavePath)) File.Delete(SavePath); } catch { }
-        // Progress lives in two places: the save file AND the PlayerPrefs gate on the
-        // how-to-play card. Deleting only the file left the intro suppressed forever
-        // after the first wipe. Mute stays — that's a setting, not progress.
+        // Progress lives in THREE places: the save file, the PlayerPrefs gate on the
+        // how-to-play card, and the static prestige count. Deleting only the file left
+        // the intro suppressed forever after the first wipe, and would leave a wiped
+        // player quietly holding a +75% earnings bonus. Mute stays — that's a setting.
+        Prestige.Set(0);
         PlayerPrefs.DeleteKey(IntroTutorial.SeenKey);
         PlayerPrefs.Save();
+    }
+
+    /// <summary>
+    /// "New Valley" — the prestige reset, wired to the victory panel.
+    ///
+    /// Writes a fresh save rather than mutating live components: every system already
+    /// knows how to restore itself from a file, so the scene reload does the work and
+    /// there is no second "reset everything" code path to keep in sync.
+    ///
+    /// Kept across the reset: the prestige count (incremented), lifetime stats, and —
+    /// if <paramref name="keepCamp"/> — every structure you placed. Everything else
+    /// goes back to what a fresh player starts with.
+    /// </summary>
+    public void PrestigeReset(bool keepCamp)
+    {
+        var d = new SaveData
+        {
+            version = CurrentVersion,
+            valleysMastered = Prestige.ValleysMastered + 1,
+            coins = 0,
+            capacity = baseCapacity,
+            moveSpeed = baseMoveSpeed,
+            health = baseHealth,
+            axeTier = 1, pickaxeTier = 1, weaponTier = 1,
+            capacityLevel = 1, speedLevel = 1,
+            campfireTier = 0, storageTier = 0,
+            objectiveIndex = 0,
+        };
+
+        // Lifetime counters are LIFETIME — they span valleys, and the objective chain
+        // reads them, so zeroing them would instantly re-complete the gather goals.
+        // Carrying them means those goals stay complete, which is the intended
+        // shortcut: a returning player is not asked to chop their first 20 logs again.
+        if (stats != null)
+        {
+            d.statWood = stats.GatheredWood;
+            d.statStone = stats.GatheredStone;
+            d.statTotal = stats.GatheredTotal;
+            d.statKills = stats.CreaturesKilled;
+        }
+
+        if (keepCamp && builder != null)
+            builder.SnapshotBuildables(out d.buildIndices, out d.buildPositions, out d.buildRotY);
+
+        try { File.WriteAllText(SavePath, JsonUtility.ToJson(d)); }
+        catch (Exception e) { Debug.LogError($"[SaveManager] prestige write failed, aborting reset: {e.Message}"); return; }
+
+        dirty = false;   // the autosave must not stomp the file we just wrote
+        // LoadScene does NOT reset timeScale, and the victory panel is not paused
+        // today — but the pause sheet could reach this later, and a scene that loads
+        // frozen is a silent, total failure.
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 }

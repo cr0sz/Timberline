@@ -172,7 +172,15 @@ public class Shop : MonoBehaviour
     bool WeaponMaxed()   => toolInventory.weaponTier >= maxToolTier;
 
     // Coins earned per unit for a given resource.
-    public int PriceOf(ResourceType type)
+    //
+    // The prestige cut is applied HERE, at the single choke point every sale and every
+    // displayed price runs through, so a New Valley bonus can never disagree with the
+    // number on the card. A uniform multiplier also preserves the cross-zone price
+    // ordering that EconomyTests pins.
+    public int PriceOf(ResourceType type) => Prestige.Apply(BasePriceOf(type));
+
+    /// <summary>Authored price, before any prestige bonus. The balance numbers live here.</summary>
+    public int BasePriceOf(ResourceType type)
     {
         switch (type)
         {

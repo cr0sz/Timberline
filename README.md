@@ -438,7 +438,7 @@ circles painted across camp at all times.
 ### Persistence
 
 **[`SaveManager.cs`](Assets/Scripts/SaveManager.cs)** — JSON at
-`Application.persistentDataPath/save.json`, schema version 6.
+`Application.persistentDataPath/save.json`, schema version 8.
 
 Saves on a throttled autosave (3 s after any inventory change), on `OnApplicationPause`
 and on `OnApplicationQuit` — the pause hook is the mobile-critical one, since Android will
@@ -447,7 +447,15 @@ happily kill a backgrounded app without ever reaching `OnApplicationQuit`.
 Persisted: coins, capacity, moveSpeed, health, all three tool tiers, capacity/speed levels,
 carried resources (as parallel `int[]` arrays, because `JsonUtility` can't serialise a
 dictionary), both pad tiers **and their built positions**, every placed buildable
-(index + position + Y rotation), the objective index, and the four lifetime stat counters.
+(index + position + Y rotation), the objective index, the four lifetime stat counters,
+and the prestige count.
+
+**Migrations are mandatory when a build catalog entry is cut.** `buildIndices` stores raw
+catalog positions, so removing an entry renumbers everything after it and an old save
+rebuilds the wrong prefabs. v7 cut the Crate at index 10, moving Campfire 11 -> 10;
+`RemapAfterCut` handles it as a pure function with `SaveMigrationTests` behind it. Cut
+entries are **dropped**, never remapped — turning a player's crates into campfires would
+hand out free predator-repel zones the 3-campfire cap exists to prevent.
 
 Load order inside `Load()` is deliberate: stats before objectives, because
 `ObjectiveManager.LoadIndex` re-evaluates goals against stats.
@@ -480,6 +488,7 @@ a setting, not progress.
 | [`BackCarryVisual.cs`](Assets/Scripts/BackCarryVisual.cs) | Your haul as a bundle on your back; scales down past a max height so a full bag always reads as "packed". |
 | [`HeldToolSwap.cs`](Assets/Scripts/HeldToolSwap.cs) | One thing in hand at a time — axe while gathering, weapon while a creature is near, empty otherwise. Combat wins ties. |
 | [`PanelPop.cs`](Assets/Scripts/PanelPop.cs) / [`UIFeedback.cs`](Assets/Scripts/UIFeedback.cs) | Panel scale-in, and button punch + card colour flash on buy/reject. Both run on **unscaled** time so they animate at `timeScale 0`. |
+| [`Prestige.cs`](Assets/Scripts/Prestige.cs) | "New Valley" — +25% sell earnings per valley mastered. Static so it survives the scene reload that performs the reset, which is exactly why `DeleteSave` zeroes it: otherwise a wiped player keeps a permanent bonus. Applied at `Shop.PriceOf`, the single point every sale and every displayed price runs through. |
 | [`TitleScreen.cs`](Assets/Scripts/TitleScreen.cs) | The front door, as a panel rather than a scene. Pins `timeScale` to 0, hides the HUD/BUILD/settings chrome outright (a 0.9 scrim only dims them to ~30% in linear colour), and defers the first-run how-to-play card until PLAY so two modals never stack. |
 | [`PauseMenu.cs`](Assets/Scripts/PauseMenu.cs) | Freezes via `timeScale`. Mute drives `AudioListener.volume`, not the manager's master, so the author's mix trims survive. |
 | [`ResetButton.cs`](Assets/Scripts/ResetButton.cs) | Two-tap guarded wipe, so a stray touch can't delete a run. |

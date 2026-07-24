@@ -929,15 +929,36 @@ public static class BuildCatalogSetup
         rb.label = reset.GetComponentInChildren<TextMeshProUGUI>();
 
         // --- the win screen ---
-        var victory = Overlay("VictoryPanel", root, out var winCard, 640f, 420f);
+        // Now the door to prestige, so it grew from one button to three: master the
+        // valley, then hand it back for a permanent cut on every sale — keeping the
+        // camp you built or razing it. CONTINUE stays, and stays LAST and quiet: a
+        // player who just won should never feel pushed into wiping their run.
+        const float WinW = 700f, WinBtnH = 92f, WinGap = 14f;
+        const float WinBtnTop = 300f;   // first button's top edge, below the body copy
+        const float WinH = WinBtnTop + WinBtnH * 3f + WinGap * 2f + Pad;
+        var victory = Overlay("VictoryPanel", root, out var winCard, WinW, WinH);
 
         Label("Title", winCard, "VALLEY MASTERED", 46f, TextAlignmentOptions.Center, Accent,
-              new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -110f), new Vector2(0f, -36f));
-        Label("Body", winCard, "Every objective complete.\nThe camp is yours — keep building.",
+              new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -104f), new Vector2(0f, -36f));
+        Label("Body", winCard, "Every objective complete.",
               30f, TextAlignmentOptions.Center, Ink,
-              new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(24f, 130f), new Vector2(-24f, -130f))
+              new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(24f, -160f), new Vector2(-24f, -114f))
             .textWrappingMode = TMPro.TextWrappingModes.Normal;
-        var cont = MenuButton(winCard, "ContinueBtn", "CONTINUE", Accent, -318f, 640f - Pad * 2f, BtnH);
+        // VictoryPanel rewrites this at show time with the actual next-valley bonus.
+        var winBonus = Label("BonusLabel", winCard, "A new valley pays more on every sale.",
+              27f, TextAlignmentOptions.Center, InkDim,
+              new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(24f, -252f), new Vector2(-24f, -172f));
+        winBonus.textWrappingMode = TMPro.TextWrappingModes.Normal;
+
+        float winBtnW = WinW - Pad * 2f;
+        var keepBtn = MenuButton(winCard, "NewValleyKeepBtn", "NEW VALLEY — KEEP CAMP", Accent,
+                                 -WinBtnTop, winBtnW, WinBtnH, 30f);
+        var razeBtn = MenuButton(winCard, "NewValleyRazeBtn", "NEW VALLEY — RAZE CAMP",
+                                 new Color(0.42f, 0.19f, 0.17f, 1f),
+                                 -(WinBtnTop + WinBtnH + WinGap), winBtnW, WinBtnH, 30f);
+        razeBtn.GetComponentInChildren<TextMeshProUGUI>().color = new Color(0.95f, 0.55f, 0.50f);
+        var cont = MenuButton(winCard, "ContinueBtn", "KEEP PLAYING", Chip,
+                              -(WinBtnTop + (WinBtnH + WinGap) * 2f), winBtnW, WinBtnH, 30f);
 
         // --- first-run how-to-play card ---
         // A new player lands in an open map with a joystick and no idea the goal is
@@ -1085,7 +1106,11 @@ public static class BuildCatalogSetup
             if (vp == null) vp = gm.AddComponent<VictoryPanel>();
             vp.panel = victory.gameObject;
             vp.objectives = Object.FindFirstObjectByType<ObjectiveManager>();
+            vp.save = Object.FindFirstObjectByType<SaveManager>();
+            vp.bonusLabel = winBonus;
             UnityEventTools.AddPersistentListener(cont.GetComponent<Button>().onClick, new UnityEngine.Events.UnityAction(vp.Dismiss));
+            UnityEventTools.AddPersistentListener(keepBtn.GetComponent<Button>().onClick, new UnityEngine.Events.UnityAction(vp.NewValleyKeepCamp));
+            UnityEventTools.AddPersistentListener(razeBtn.GetComponent<Button>().onClick, new UnityEngine.Events.UnityAction(vp.NewValleyRazeCamp));
 
             var it = gm.GetComponent<IntroTutorial>();
             if (it == null) it = gm.AddComponent<IntroTutorial>();
