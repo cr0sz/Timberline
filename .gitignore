@@ -18,3 +18,7 @@
 *.svd
 *.unitypackage
 .DS_Store
+
+# Internal working notes — the private working repo owns these.
+Assets/TODO.txt
+Assets/TODO.txt.meta
