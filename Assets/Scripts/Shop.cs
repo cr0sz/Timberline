@@ -68,6 +68,7 @@ public class Shop : MonoBehaviour
     public int maxSpeedLevel = 10;
 
     const string CoinHex = "#F2C14E";
+    const string CantAffordHex = "#E24C47";   // cost shown red when you can't afford it
 
     int capacityLevel = 1;
     int speedLevel = 1;
@@ -288,10 +289,17 @@ public class Shop : MonoBehaviour
             label.text = maxed ? $"{name}\n<size=60%>MAX LEVEL</size>"
                                : $"{name}\n<size=60%>Lv {level}</size>";
 
+        // A greyed button reads as "broken/maxed" unless the price also says WHY. So an
+        // affordable upgrade shows its cost in gold, an unaffordable one in red — the
+        // card itself answers "why can't I buy the next level?" with "not enough coins,"
+        // which is the actual reason a maxing player (e.g. pickaxe 14 -> 15) gets stuck.
+        bool canAfford = !maxed && inventory.CanAffordCoins(cost);
         if (costText != null)
-            costText.text = maxed ? "—" : $"<color={CoinHex}>{cost}</color>";
+            costText.text = maxed ? "—"
+                          : canAfford ? $"<color={CoinHex}>{cost}</color>"
+                                      : $"<color={CantAffordHex}>{cost}</color>";
 
         if (button != null)
-            button.interactable = !maxed && inventory.CanAffordCoins(cost);
+            button.interactable = canAfford;
     }
 }

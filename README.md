@@ -17,23 +17,12 @@ Everything is one scene (`Assets/Scenes/Map.unity`), one player, no netcode.
 | ![Quarry](Screenshots/04-quarry.png) | ![Deep forest](Screenshots/05-deepforest.png) |
 | **Quarry (Lv1 pickaxe)** — the stone lane | **Deep forest (Lv15 axe)** — 170 nodes, the endgame zone |
 
-<sub>Shots are rendered from edit mode at the game's own camera rig (8 up, 6 back, 50° pitch)
-by <a href="Assets/Editor/ScreenshotTool.cs">ScreenshotTool.cs</a>, so they re-generate from a menu item after any world change.
-The player is out of frame in all of them — edit mode runs no Animator, so the rig would render T-posed.</sub>
-
-> **This is the source-code repository.** It contains the C# runtime code, the editor
-> tooling that generates the world, the test suite and the design docs — about 4 000
-> lines across 40 scripts. It deliberately does **not** contain the art, audio, models
-> or animations: those are commercial Unity Asset Store products licensed to me
-> personally, and redistributing them as source would breach their EULA. So this repo
-> is for reading, not for cloning-and-pressing-Play. The playable build is the place
-> to actually play it.
+<sub>Regenerate these from <b>Tools/Survival/Capture Screenshots</b> after any world change.</sub>
 
 ---
 
 ## Table of contents
 
-- [What's in here](#whats-in-here)
 - [Running it](#running-it)
 - [The core loop](#the-core-loop)
 - [Architecture](#architecture)
@@ -53,27 +42,10 @@ The player is out of frame in all of them — edit mode runs no Animator, so the
 
 ---
 
-## What's in here
-
-```
-Assets/Scripts/     40 runtime scripts — the whole game
-Assets/Editor/      editor tooling that GENERATES the world (see Editor tooling)
-Assets/Tests/       EditMode regression suite
-docs/               design specs for the bigger reworks
-manifest.json       the exact package set the project builds against
-```
-
-The most interesting part is arguably `Assets/Editor`. The map is not hand-placed —
-`TycoonSetup.cs` generates the terrain, all 674 resource nodes, the six zones, the roads
-and the camp from code. Same for the market, the buildables catalog, the particle
-prefabs and the NavMesh bake. That means the whole world is reproducible from a menu
-item, and balance changes are a re-run rather than an afternoon of dragging things.
-
 ## Running it
 
-The full project (with art) opens in Unity 6.3 LTS: load `Assets/Scenes/Map.unity` and
-press Play. WASD/arrows drive the player in the editor; on device a floating touch
-joystick does.
+Open the project in Unity 6.3 LTS, load `Assets/Scenes/Map.unity`, press Play.
+WASD/arrows drive the player in the editor; on device a floating touch joystick does.
 
 Build target is Android. `MobileBootstrap` uncaps the framerate to 60 and forces the
 `Mobile` quality level on real handhelds.
@@ -533,13 +505,13 @@ All of this is scene data, tunable from the Inspector without a recompile.
 | Zone | Tool | Nodes | Yield/node | Hits | Distance from shop | Zone stock |
 |---|---|---|---|---|---|---|
 | Meadow_Oak_Lv1 | Axe Lv1 | 120 | 5 wood | 5 | 13–68 m | 600 u = 1 800 c |
-| Quarry_Stone_Lv1 | Pickaxe Lv1 | 89 | 7 stone | 6 | 40–76 m | 623 u = 1 869 c |
+| Quarry_Stone_Lv1 | Pickaxe Lv1 | 113 | 6 stone | 6 | 40–76 m | 678 u = 2 034 c |
 | Orchard_Apple_Lv5 | Axe Lv5 | 55 | 10 wood | 5 | 27–66 m | 550 u = 1 650 c |
-| OreField_Lv5 | Pickaxe Lv5 | 90 | 14 stone | 6 | 55–103 m | 1 260 u = 3 780 c |
+| OreField_Lv5 | Pickaxe Lv5 | 124 | 11 stone | 6 | 55–103 m | 1 364 u = 4 092 c |
 | PineForest_Lv10 | Axe Lv10 | 150 | 18 wood | 6 | 30–88 m | 2 700 u = 8 100 c |
 | DeepForest_Poplar_Lv15 | Axe Lv15 | 170 | 26 wood | 7 | 39–84 m | 4 420 u = 13 260 c |
 
-All nodes regrow in 30–60 s. **674 nodes total.**
+All nodes regrow in 30–60 s. **732 nodes total.** Every rock in a mine zone is a node — there are no un-mineable decoration rocks mixed in (fixed 2026-07-27).
 
 Income at the node, at each zone's gating tier — this is the number that decides which
 lane a player actually farms:
@@ -547,9 +519,9 @@ lane a player actually farms:
 | Zone | Coins/sec |
 |---|---|
 | Meadow Lv1 | 3.0 |
-| Quarry Lv1 | 3.5 |
+| Quarry Lv1 | 3.0 |
 | Orchard Lv5 | 13.4 |
-| OreField Lv5 | 14.0 |
+| OreField Lv5 | 11.0 |
 | Pine Lv10 | 51.9 |
 | Deep forest Lv15 | 215.4 |
 

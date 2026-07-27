@@ -23,6 +23,9 @@ public class PlayerGatherer : MonoBehaviour
 
     // True while actively chopping/mining — HeldToolSwap uses it to show the axe.
     public bool Gathering { get; private set; }
+    // True while that gathering is specifically STONE, so HeldToolSwap can put a
+    // pickaxe in the hand for rocks and the hatchet for wood.
+    public bool GatheringStone { get; private set; }
 
     void Update()
     {
@@ -96,6 +99,7 @@ public class PlayerGatherer : MonoBehaviour
         }
 
         Gathering = canGather;
+        GatheringStone = canGather && target != null && target.resourceType == ResourceType.Stone;
         animator.SetBool("Gathering", canGather);
     }
 
