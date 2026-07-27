@@ -31,13 +31,11 @@ write-up — architecture, systems, balance maths, and the shipped bugs pinned b
 | ![Quarry](Screenshots/04-quarry.png) | ![Deep forest](Screenshots/05-deepforest.png) |
 | **Quarry (Lv1 pickaxe)** — the stone lane | **Deep forest (Lv15 axe)** — 170 nodes, the endgame zone |
 
-<sub>Regenerate these from <b>Tools/Survival/Capture Screenshots</b> after any world change.</sub>
-
 ---
 
 ## Table of contents
 
-- [Running it](#running-it)
+- [Play it](#play-it)
 - [The core loop](#the-core-loop)
 - [Architecture](#architecture)
 - [Systems in depth](#systems-in-depth)
@@ -56,13 +54,22 @@ write-up — architecture, systems, balance maths, and the shipped bugs pinned b
 
 ---
 
-## Running it
+## Play it
 
-Open the project in Unity 6.3 LTS, load `Assets/Scenes/Map.unity`, press Play.
-WASD/arrows drive the player in the editor; on device a floating touch joystick does.
+1. **[Download the APK](https://github.com/cr0sz/Timberline/releases/latest)** (~64 MB).
+2. Copy it to an Android phone and tap it.
+3. Allow "install from unknown sources" when Android asks — that's the standard prompt for
+   anything that didn't come from the Play Store.
 
-Build target is Android. `MobileBootstrap` uncaps the framerate to 60 and forces the
-`Mobile` quality level on real handhelds.
+Drive with the floating touch joystick: put your thumb anywhere on the left of the screen
+and the stick appears under it. Chopping, mining and fighting are automatic — stand still,
+face the thing, and your character swings.
+
+### Build from source
+
+Open the project in Unity 6.3 LTS, load `Assets/Scenes/Map.unity`, press Play. WASD/arrows
+drive the player in the editor. Build target is Android; `MobileBootstrap` uncaps the
+framerate to 60 and forces the `Mobile` quality level on real handhelds.
 
 There is no launcher scene: the title screen is a panel over the already-loaded map with
 `timeScale` pinned to 0, not a second scene. It reads "PLAY" on a fresh install and
