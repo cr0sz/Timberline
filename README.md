@@ -1,14 +1,28 @@
 <img src="Branding/wordmark-transparent.png" alt="Timberline" height="72">
 
-A mobile (Android) low-poly survival-tycoon built in **Unity 6.3 LTS (6000.3.13f1)** with URP.
+**A low-poly survival-tycoon for Android. Chop, mine, hunt, sell, upgrade — and survive the predators that show up once you're rich enough to be worth eating.**
 
-You start next to a market stall with a tier-1 axe and an empty bag. You chop, you mine,
-you hunt, you sell, you upgrade, and each upgrade unlocks a zone that pays better than
-the last. Predators arrive on a timer and take the valley from a chore into a risk.
-
-Everything is one scene (`Assets/Scenes/Map.unity`), one player, no netcode.
+[![Download APK](https://img.shields.io/badge/Download-APK%20v0.2.0-2ea44f?style=for-the-badge&logo=android&logoColor=white)](https://github.com/cr0sz/Timberline/releases/latest)
+&nbsp;
+![Unity](https://img.shields.io/badge/Unity-6.3%20LTS-000?style=for-the-badge&logo=unity&logoColor=white)
+![C#](https://img.shields.io/badge/C%23-Runtime-512BD4?style=for-the-badge&logo=csharp&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
 
 ![The valley from above — camp at the bottom, six zones radiating out](Screenshots/01-valley.png)
+
+Start with a rusty axe and an empty bag. Chop wood, mine stone, hunt deer, sell the haul,
+and sink every coin back into better gear. Each upgrade cracks open a richer zone — six of
+them, radiating out from camp, each one paying more than the last. Then the wolves come.
+Then the tiger. Then the bear. The richer you get, the more the valley wants you dead.
+
+Six zones. Twelve buildable structures. Five things to upgrade. One valley that keeps
+raising the stakes.
+
+> ### ▶ [**Download & play (APK v0.2.0)**](https://github.com/cr0sz/Timberline/releases/latest)
+> Sideload it on any Android phone — no account, no store, no sign-up.
+
+<sub>Built solo in Unity 6.3 LTS (URP, C#). Everything below the fold is the engineering
+write-up — architecture, systems, balance maths, and the shipped bugs pinned by tests.</sub>
 
 | | |
 |---|---|
